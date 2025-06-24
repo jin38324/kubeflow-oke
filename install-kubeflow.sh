@@ -23,6 +23,18 @@ git checkout $KF_VERSION_BRANCH_NAME
 # almost certainly not needed, but just to be safe
 git pull origin
 
+echo "Generating password"
+# sudo yum install httpd-tools -y
+PASSWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+echo "The password for user@example.com is  $PASSWD"
+KF_PASSWD=$(htpasswd -nbBC 12 USER $PASSWD| sed -r 's/^.{5}//')
+# echo $KF_PASSWD 
+# Taken note of this output
+cd $HOME/kubeflow-$KF_VERSION_BRANCH_NAME
+sed -i.orig "s|DEX_USER_PASSWORD:.*|DEX_USER_PASSWORD: $KF_PASSWD|" common/dex/base/dex-passwords.yaml
+#Disable knative-eventing
+sed -i.orig "s|- ../common/knative/knative-eventing/base|#- ../common/knative/knative-eventing/base|" example/kustomization.yaml 
+
 # do the actual install
 echo "Starting kubeflow install, this may take a while"
 
@@ -147,5 +159,5 @@ kubectl apply -f $HOME/kubeflow/sslenableingress.yaml
 echo "Your kubeflow dashboard is at https://$DOMAIN"
 echo "Login as user@example.com"
 echo This is your kubeflow password for user user@example.com
-echo "12341234"
+echo $PASSWD
 
