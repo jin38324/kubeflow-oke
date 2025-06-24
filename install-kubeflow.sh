@@ -1,7 +1,10 @@
 #!/bin/bash -f
 # Copyright (c) 2022, Oracle and/or its affiliates.
-KF_VERSION_BRANCH_NAME=v1.8.1
-KUSTOMIZE_VERSION=5.1.0
+
+# Set June 2025 new version 
+KF_VERSION_BRANCH_NAME=v1.10.1
+KUSTOMIZE_VERSION=5.6.0
+
 # setup KF and download
 cd $HOME
 mkdir kubeflow
@@ -10,6 +13,7 @@ KUSTOMIZE_INSTALL=$HOME/kubeflow/install_kustomize.sh
 curl -s -o $KUSTOMIZE_INSTALL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" 
 chmod +x $KUSTOMIZE_INSTALL
 bash $KUSTOMIZE_INSTALL $KUSTOMIZE_VERSION
+
 # download the entire kubeflow system
 echo "getting kubeflow"
 git clone https://github.com/kubeflow/manifests.git kubeflow-$KF_VERSION_BRANCH_NAME
@@ -19,22 +23,10 @@ git checkout $KF_VERSION_BRANCH_NAME
 # almost certainly not needed, but just to be safe
 git pull origin
 
-echo "Generating password"
-# sudo yum install httpd-tools -y
-PASSWD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
-echo "The password for user@example.com is  $PASSWD"
-KF_PASSWD=$(htpasswd -nbBC 12 USER $PASSWD| sed -r 's/^.{5}//')
-# echo $KF_PASSWD 
-# Taken note of this output
-cd $HOME/kubeflow-$KF_VERSION_BRANCH_NAME
-sed -i.orig "s|DEX_USER_PASSWORD:.*|DEX_USER_PASSWORD: $KF_PASSWD|" common/dex/base/dex-passwords.yaml
-#Disable knative-eventing
-sed -i.orig "s|- ../common/knative/knative-eventing/base|#- ../common/knative/knative-eventing/base|" example/kustomization.yaml 
-
 # do the actual install
 echo "Starting kubeflow install, this may take a while"
 
-while ! $HOME/kustomize build example --load-restrictor LoadRestrictionsNone | kubectl apply -f -; do echo "Retrying to apply resources"; sleep 10; done
+while ! $HOME/kustomize build example --load-restrictor LoadRestrictionsNone | kubectl apply --server-side --force-conflicts -f -; do echo "Retrying to apply resources"; sleep 10; done
 
 
 # Once it's suceeded do this in s separate directory so we can change things easily
@@ -155,5 +147,5 @@ kubectl apply -f $HOME/kubeflow/sslenableingress.yaml
 echo "Your kubeflow dashboard is at https://$DOMAIN"
 echo "Login as user@example.com"
 echo This is your kubeflow password for user user@example.com
-echo $PASSWD
+echo "12341234"
 
